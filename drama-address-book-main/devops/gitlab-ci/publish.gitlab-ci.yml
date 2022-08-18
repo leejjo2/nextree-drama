@@ -1,0 +1,29 @@
+.publish: &publish
+  image: gradle:jdk11
+  only:
+    - release
+  tags:
+    - nara-docker
+
+# publish all available modules
+publish:
+  <<: *publish
+  stage: publish
+  script:
+    - gradle clean build -x test publish -c settings.gradle
+
+# publish client module
+publish-client:
+  <<: *publish
+  stage: publish
+  script:
+    - gradle ${SERVICE_NAME}-client:clean ${SERVICE_NAME}-client:build -x test ${SERVICE_NAME}-client:publish -c settings.gradle
+  when: manual
+
+# publish event module
+publish-event:
+  <<: *publish
+  stage: publish
+  script:
+    - gradle ${SERVICE_NAME}-client:clean ${SERVICE_NAME}-event:build -x test ${SERVICE_NAME}-event:publish -c settings.gradle
+  when: manual

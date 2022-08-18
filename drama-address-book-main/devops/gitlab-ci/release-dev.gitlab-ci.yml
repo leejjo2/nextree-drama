@@ -1,0 +1,89 @@
+.release: &release
+  only:
+    - release
+  tags:
+    - nara-docker
+
+variables:
+  DOCKER_IMAGE_TAG: "gcr.io/${GCP_DEV_PROJECT_ID}/${NARAWAY}/${SERVICE_NAME}"
+  SERVICE_ACCOUNT_HOLDER: "nara-service-account"
+  SERVICE_HOST: "demo.dev.naraway.io"
+  K8S_DIR: "devops"
+  K8S_ENV: "dev"
+  K8S_NS: "naraway"
+
+# build spring boot jar and publish
+build-publish:
+  <<: *release
+  stage: build-publish
+  image: gradle:jdk11
+  script:
+    - gradle clean build -x test publish -c settings.gradle
+  artifacts:
+    paths:
+      - ${SERVICE_NAME}-boot/build/libs/${SERVICE_NAME}-boot-${SERVICE_VERSION}.jar
+
+# build docker image and push to repository
+bundle:
+  <<: *release
+  stage: bundle
+  image: docker:20-dind
+  services:
+    - name: docker:20-dind
+      alias: docker
+      command:
+        - "--tls=false"
+  needs:
+    - build-publish
+  script:
+    - >
+      sed
+      -e "s/SERVICE_NAME/$(echo ${SERVICE_NAME})/g"
+      -e "s/SERVICE_VERSION/$(echo ${SERVICE_VERSION})/g"
+      ./${K8S_DIR}/Dockerfile > Dockerfile
+    - echo "${DOCKER_IMAGE_TAG}":"${CI_PIPELINE_ID}"
+    - docker build -t "${DOCKER_IMAGE_TAG}":"${CI_PIPELINE_ID}" -f Dockerfile .
+    - echo "${GCP_NARA_DEV_KEY}" > key.json
+    - cat key.json | docker login -u _json_key --password-stdin https://gcr.io
+    - docker push "${DOCKER_IMAGE_TAG}":"${CI_PIPELINE_ID}"
+
+# release service, configmap, deployment
+deploy:
+  <<: *release
+  stage: deploy
+  image: google/cloud-sdk
+  needs:
+    - bundle
+  script:
+    - echo "${GCP_NARA_DEV_KEY}" > key.json
+    - gcloud auth activate-service-account --key-file key.json
+    - export CLOUDSDK_COMPUTE_ZONE="${COMPUTE_ZONE}"
+    - export CLOUDSDK_CORE_PROJECT="${GCP_DEV_PROJECT_ID}"
+    - gcloud container clusters get-credentials ${CLUSTER_ID}
+    - >
+      sed
+      -e "s/SERVICE_NAME/$(echo ${SERVICE_NAME})/g"
+      -e "s/SERVICE_HOST/$(echo ${SERVICE_HOST})/g"
+      -e "s/SERVICE_GROUP/$(echo ${SERVICE_GROUP})/g"
+      ./${K8S_DIR}/service.yml > service.yml
+    - kubectl apply -f service.yml -n ${K8S_NS}
+    - >
+      sed
+      -e "s/SERVICE_NAME/$(echo ${SERVICE_NAME})/g"
+      -e "s/APPLICATION_NAME/$(echo ${APPLICATION_NAME})/g"
+      ./${K8S_DIR}/overrides/${K8S_ENV}/configmap.yml > configmap.yml
+    - kubectl apply -f configmap.yml -n ${K8S_NS}
+    - >
+      sed
+      -e "s/SERVICE_NAME/$(echo ${SERVICE_NAME})/g"
+      -e "s/SERVICE_VERSION/$(echo ${SERVICE_VERSION})/g"
+      -e "s/SERVICE_GROUP/$(echo ${SERVICE_GROUP})/g"
+      -e "s/SERVICE_ACCOUNT_HOLDER/$(echo ${SERVICE_ACCOUNT_HOLDER})/g"
+      -e "s/IMAGE_TAG_HOLDER/$(echo ${DOCKER_IMAGE_TAG} | sed 's/\//\\\//g'):${CI_PIPELINE_ID}/g"
+      ./${K8S_DIR}/overrides/${K8S_ENV}/deployment.yml > deployment.yml
+    - cat deployment.yml
+    - kubectl apply -f deployment.yml -n ${K8S_NS}
+  artifacts:
+    paths:
+      - deployment.yml
+  when: manual

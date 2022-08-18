@@ -1,0 +1,34 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: external-kafka
+spec:
+  clusterIP: None
+  ports:
+    - protocol: TCP
+      port: 9092
+---
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: external-kafka
+subsets:
+  - addresses:
+      - ip: 10.146.0.9
+    ports:
+      - port: 9092
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: ServiceEntry
+metadata:
+  name: external-kafka
+spec:
+  hosts:
+    - external-kafka
+  addresses:
+    - 10.146.0.9/32
+  ports:
+    - name: tcp
+      number: 9092
+      protocol: tcp
+  location: MESH_EXTERNAL

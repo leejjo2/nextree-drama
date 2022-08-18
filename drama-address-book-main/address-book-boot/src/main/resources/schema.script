@@ -1,0 +1,9 @@
+## DB 스키마 생성
+
+use mysql;
+CREATE DATABASE addressPage CHARACTER SET utf8 COLLATE utf8_general_ci;
+Create user 'addressPage'@'%' identified by 'addressPage';
+Create user 'addressPage'@'localhost' identified by 'addressPage';
+Grant all privileges on addressPage.* to addressPage@'%';
+Grant all privileges on addressPage.* to addressPage@'localhost';
+Flush privileges;

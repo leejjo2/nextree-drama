@@ -1,0 +1,87 @@
+spring:
+  application:
+    name: addressbook
+  profiles:
+    active: default
+
+server:
+  port: 9093
+
+management:
+  endpoints.web.exposure.include: health
+
+nara:
+  janitor:
+    mode: local
+    id: io.naradrama.addressbook
+    subscriptions: >
+      io.naraplatform.stage
+    bootstrap-address: localhost:9092
+  swagger:
+    authorization: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX25hbWUiOiJzdGV2ZUBuZXh0cmVlLmlvIiwic2NvcGUiOlsic2NvcGUiXSwid29ya3NwYWNlcyI6eyJzdGF0aW9uV29ya3NwYWNlcyI6bnVsbCwic3F1YXJlV29ya3NwYWNlcyI6bnVsbCwicGF2aWxpb25Xb3Jrc3BhY2VzIjpudWxsLCJjaW5lcm9vbVdvcmtzcGFjZXMiOlt7ImlkIjoibmUxLW0xLWMxIiwibmFtZSI6IlN0ZXZlIiwidGVuYW50SWQiOiJvMS1yQG5lMS1tMS1jMSIsInJvbGVzIjpbIkFkbWluIiwiVXNlciJdfSx7ImlkIjoibmUxLW0xLWMyIiwibmFtZSI6IlN0ZXZlIiwidGVuYW50SWQiOiJvMS1yQG5lMS1tMS1jMiIsInJvbGVzIjpbIlVzZXIiXX1dLCJzdHVkaW9Xb3Jrc3BhY2UiOm51bGx9LCJleHAiOjE1OTAwNjM4MjEsImFkZHRpb25hbEluZm9ybWF0aW9uIjp7fSwiYXV0aG9yaXRpZXMiOlsiVVNFUiJdLCJqdGkiOiI0ZjkwOTdiZS1jMTI0LTRkZTctODU3NC0wNzFjODY5MjMxOTAiLCJjbGllbnRfaWQiOiJjbGllbnQifQ.12-ndMQGQY8MvsV7MyfBQiOIHOQD-rmDK37gkhxQJpY'
+  signing-key: naraBizAdmin1!!
+logging:
+  level:
+    io.naradrama: info
+    io.naraplatform: info
+  pattern:
+    console: '%d{yyyy-MM-dd HH:mm:ss.SSS} %clr(%5p) [${spring.application.name:-},%X{traceId:-},%X{spanId:-}] [${PID:- }] [%15.15t] %clr(%-60.60logger{59}){cyan} : %m%n%wEx'
+
+---
+spring:
+  config:
+    activate:
+      on-profile: default
+  data:
+    mongodb:
+      authentication-database: ${spring.application.name}
+      host: 127.0.0.1
+      port: 27017
+      database: ${spring.application.name}
+      username: ${spring.application.name}
+      password: ${spring.application.name}
+
+nara:
+  janitor:
+    mode: local
+    #daysman:
+    #mode: local
+  drama:
+    default:
+      actorId: 1@1:1:1:1-1
+      loginId: user@company.io
+      displayName: Manager
+      citizenId: 1@1:1:1
+      cineroomIds: 1:1:1:1,1:1:1:2,1:1:1:3
+
+---
+spring:
+  config:
+    activate:
+      on-profile: k8s
+  data:
+    mongodb:
+      authentication-database: ${datasource.name}
+      host: ${datasource.host}
+      port: ${datasource.port}
+      database: ${datasource.name}
+      username: ${datasource.username}
+      password: ${datasource.password}
+
+server:
+  port: 8080
+
+logging:
+  level:
+    root: ${logging.level.root}
+
+springfox:
+  documentation:
+    enabled: true
+
+nara:
+  swagger:
+    basePath: /api/${spring.application.name}
+  janitor:
+    mode: ${janitor.mode}
+    bootstrap-address: ${janitor.bootstrap-address}

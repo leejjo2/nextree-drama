@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: SERVICE_NAME
+data:
+  datasource.host: external-mongo
+  datasource.port: "27017"
+  datasource.name: APPLICATION_NAME
+  datasource.username: APPLICATION_NAME
+  logging.level.root: info
+  logging.level.io.naraway: debug
+  janitor.mode: kafka
+  janitor.bootstrap-address: external-kafka:9092
+#  janitor.mode: nats
+#  janitor.bootstrap-address: nats:4222
+  profile: k8s

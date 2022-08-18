@@ -1,0 +1,29 @@
+variables:
+  SERVICE_NAME: "address-book"
+  SERVICE_VERSION: "3.2.0-SNAPSHOT"
+  SERVICE_GROUP: "naraway"
+  APPLICATION_NAME: "addressbook"
+
+include:
+#  - local: devops/gitlab-ci/publish.gitlab-ci.yml
+  - local: devops/gitlab-ci/release-dev.gitlab-ci.yml
+
+stages:
+  - test
+#  - publish
+  - build-publish
+  - bundle
+  - deploy
+
+# default job that is executed when merge request is created (feature/* --> master)
+test:
+  stage: test
+  image: gradle:jdk11
+  script:
+    - echo "Unit test started..."
+    - gradle clean test
+    - echo "Unit test finished..."
+  rules:
+    - if: '$CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main"'
+  tags:
+    - nara-docker

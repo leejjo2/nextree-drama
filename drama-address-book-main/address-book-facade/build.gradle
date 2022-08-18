@@ -1,0 +1,9 @@
+dependencies {
+    api project(":address-book-aggregate")
+    api project(":address-book-feature")
+
+    implementation("org.springframework.boot:spring-boot-starter-webflux:${springBootVersion}")
+    implementation("org.springframework.boot:spring-boot-starter-data-jpa:${springBootVersion}")
+    implementation("org.springframework.boot:spring-boot-starter-data-mongodb:${springBootVersion}")
+    implementation("org.springframework:spring-tx:${springVersion}")
+}

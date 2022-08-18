@@ -1,0 +1,81 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: SERVICE_NAME
+  labels:
+    app: SERVICE_NAME
+    version: SERVICE_VERSION
+    group: SERVICE_GROUP
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: SERVICE_NAME
+      version: SERVICE_VERSION
+      group: SERVICE_GROUP
+  template:
+    metadata:
+      labels:
+        app: SERVICE_NAME
+        version: SERVICE_VERSION
+        group: SERVICE_GROUP
+      annotations:
+        sidecar.istio.io/inject: "true"
+        kubernetes.io/maxRetriesForOnFailurePolicy: "3"
+    spec:
+      serviceAccountName: SERVICE_ACCOUNT_HOLDER
+      containers:
+        - name: SERVICE_NAME
+          image: IMAGE_TAG_HOLDER
+          imagePullPolicy: Always
+          livenessProbe:
+            failureThreshold: 30
+            httpGet:
+              path: /actuator/health
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            successThreshold: 1
+            timeoutSeconds: 3
+          readinessProbe:
+            failureThreshold: 30
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 3
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "1.5"
+              memory: "2Gi"
+          ports:
+            - name: http
+              containerPort: 8080
+            - name: grpc
+              containerPort: 8090
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              valueFrom:
+                configMapKeyRef:
+                  name: SERVICE_NAME
+                  key: profile
+          envFrom:
+            - configMapRef:
+                name: SERVICE_NAME
+            - secretRef:
+                name: SERVICE_NAME-mongo-secret
+          volumeMounts:
+            - name: timezone-config
+              mountPath: /etc/localtime
+      volumes:
+        - name: timezone-config
+          hostPath:
+            path: /usr/share/zoneinfo/Asia/Seoul
+  strategy:
+    type: RollingUpdate

@@ -1,0 +1,112 @@
+plugins {
+    id "io.spring.dependency-management" version "1.0.11.RELEASE"
+    id "name.remal.sonarlint" version "1.5.0"
+}
+
+ext {
+    addressBookVersion = "3.2.0-SNAPSHOT"
+    accentVersion = "3.2.0-SNAPSHOT"
+    dramaPrologueVersion = "3.2.0-SNAPSHOT"
+    janitorLibVersion = "3.2.0-SNAPSHOT"
+
+    lombokVersion = "1.18.20"
+    springVersion = "5.3.13"
+    springBootVersion = "2.6.2"
+    springSecurityOauth2Version = "2.5.1.RELEASE"
+    springSecurityJwtVersion = "1.1.1.RELEASE"
+    springfoxVersion = "3.0.0"
+}
+
+allprojects {
+    group "io.naraway"
+    version addressBookVersion
+
+    configurations.all {
+        resolutionStrategy.cacheChangingModulesFor 0, "seconds"
+    }
+}
+
+def useMavenLocalFirst = false
+def nexusBaseUrl = "http://35.221.123.58/repository"
+
+subprojects {
+    apply plugin: "java-library"
+    apply plugin: "maven-publish"
+    apply plugin: "signing"
+    apply plugin: "io.spring.dependency-management"
+    apply plugin: "name.remal.sonarlint"
+
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
+
+    repositories {
+        if (useMavenLocalFirst) mavenLocal()
+        maven {
+            credentials {
+                username = System.getenv("NEXUS_ID")?: nexususer
+                password = System.getenv("NEXUS_PASSWORD")?: nexuspassword
+            }
+            url "${nexusBaseUrl}/nara-public/"
+            allowInsecureProtocol = true
+        }
+        if (!useMavenLocalFirst) mavenLocal()
+        mavenCentral()
+    }
+
+    dependencyManagement {
+        imports {
+            mavenBom "org.springframework.boot:spring-boot-dependencies:${springBootVersion}"
+        }
+    }
+
+    dependencies {
+        compileOnly "org.projectlombok:lombok:${lombokVersion}"
+        testImplementation "org.projectlombok:lombok:${lombokVersion}"
+        annotationProcessor "org.projectlombok:lombok:${lombokVersion}"
+        testAnnotationProcessor "org.projectlombok:lombok:${lombokVersion}"
+    }
+
+    publishing {
+        repositories {
+            maven {
+                credentials {
+                    username = System.getenv("NEXUS_MAINTAINER_ID")
+                    password = System.getenv("NEXUS_MAINTAINER_PASSWORD")
+                }
+
+                def releasesRepoUrl = nexusBaseUrl + "/nara-releases"
+                def snapshotsRepoUrl = nexusBaseUrl + "/nara-snapshots"
+
+                url = version.endsWith("SNAPSHOT") ? snapshotsRepoUrl : releasesRepoUrl
+                allowInsecureProtocol = true
+            }
+        }
+    }
+
+    sonarlint {
+        ignoreFailures = true
+        excludes {
+            source "**/*"
+            source "**/aggregate/**/*"
+            source "**/facade/**/projection/**/*"
+            source "**/test/java/**/*"
+            source "**/facade/**/*"
+            source "**/feature/**/*"
+
+            message "java:S1135" // Track uses of TODO tags
+            message "java:S1301" // switch" statements should have at least 3 case clauses
+            message "java:S115" // Constant names should comply with a naming convention
+            message "java:S1192" // String literals should not be duplicated
+            message "secrets:S6290" // Amazon Web Services credentials should not be disclose
+            message "java:S106" // Standard outputs should not be used directly to log anything
+        }
+    }
+
+    test {
+        useJUnitPlatform()
+    }
+
+    clean {
+        delete file("src/main/generated")
+    }
+}
